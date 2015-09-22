@@ -32,7 +32,7 @@ STORE_PATH = "img"
 is_button_pressed = False
 
 
-def main(file_name):
+def main():
     """main program - display list of images"""
     epd = EPD()
     liste = []
@@ -138,4 +138,4 @@ def display_file(epd, liste):
 if "__main__" == __name__:
     if len(sys.argv) !=  1:
         sys.exit('usage: {p:s}'.format(p=sys.argv[0]))
-    main(sys.argv[1])
+    main()
