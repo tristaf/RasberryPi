@@ -1,0 +1,104 @@
+# Copyright 2013 Pervasive Displays, Inc.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at:
+#
+#   http:#www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing,
+# software distributed under the License is distributed on an
+# "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either
+# express or implied.  See the License for the specific language
+# governing permissions and limitations under the License.
+
+
+import sys
+import os
+from PIL import Image
+from PIL import ImageDraw
+from PIL import ImageFont
+from datetime import datetime
+import time
+from EPD import EPD
+
+WHITE = 1
+BLACK = 0
+
+# fonts are in different places on Raspbian/Angstrom so search
+possible_fonts = [
+    '/usr/share/fonts/truetype/ttf-dejavu/DejaVuSansMono-Bold.ttf',   # R.Pi
+    '/usr/share/fonts/truetype/freefont/FreeMono.ttf',                # R.Pi
+    '/usr/share/fonts/truetype/LiberationMono-Bold.ttf',              # B.B
+    '/usr/share/fonts/truetype/DejaVuSansMono-Bold.ttf',              # B.B
+    '/usr/share/fonts/TTF/FreeMonoBold.ttf',                          # Arch
+    '/usr/share/fonts/TTF/DejaVuSans-Bold.ttf'                        # Arch
+]
+
+
+FONT_FILE = ''
+for f in possible_fonts:
+    if os.path.exists(f):
+        FONT_FILE = f
+        break
+
+if '' == FONT_FILE:
+    raise 'no font file found'
+
+
+DAY_FONT_SIZE  = 100
+MONTH_FONT_SIZE  = 20
+
+
+MAX_START = 0xffff
+
+def main(argv):
+    """main program - draw and display a test image"""
+
+    epd = EPD()
+
+    #print('panel = {p:s} {w:d} x {h:d}  version={v:s}'.format(p=epd.panel, w=epd.width, h=epd.height, v=epd.version))
+
+    epd.clear()
+
+    demo(epd)
+
+
+def demo(epd):
+    """simple partial update demo - draw draw a clock"""
+
+    # initially set all white background
+    image = Image.new('1', epd.size, WHITE)
+
+    # prepare for drawing
+    draw = ImageDraw.Draw(image)
+    width, height = image.size
+
+    day_font = ImageFont.truetype(FONT_FILE, DAY_FONT_SIZE)
+    month_font = ImageFont.truetype(FONT_FILE, MONTH_FONT_SIZE)
+
+    # clear the display buffer
+    draw.rectangle((0, 0, width, height), fill=WHITE, outline=WHITE)
+    previous_second = 0
+    previous_day = 0
+
+    now = datetime.today()
+    draw.rectangle((2, 2, width - 2, height - 2), fill=WHITE, outline=BLACK)
+#draw.text((10, 55), '{y:04d}-{m:02d}-{d:02d}'.format(y=now.year, m=now.month, d=now.day), fill=BLACK, font=date_font)
+    draw.text((75, 5), '{y:s}'.format(y=now.strftime('%B')), fill=BLACK, font=month_font)
+    draw.text((5, 25), '{y:s}'.format(y=now.strftime('%d')), fill=BLACK, font=day_font)
+
+    epd.display(image)
+    epd.update()    # full update every minute
+
+
+# main
+if "__main__" == __name__:
+    if len(sys.argv) < 1:
+        sys.exit('usage: {p:s}'.format(p=sys.argv[0]))
+
+    try:
+        main(sys.argv[1:])
+    except KeyboardInterrupt:
+        sys.exit('interrupted')
+        pass

@@ -136,6 +136,6 @@ def display_file(epd, liste):
     
 # main
 if "__main__" == __name__:
-    if len(sys.argv) !=  2:
-        sys.exit('usage: {p:s} image-file'.format(p=sys.argv[0]))
+    if len(sys.argv) !=  1:
+        sys.exit('usage: {p:s}'.format(p=sys.argv[0]))
     main(sys.argv[1])
