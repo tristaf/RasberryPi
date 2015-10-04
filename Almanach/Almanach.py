@@ -1,26 +1,17 @@
-# Copyright 2013 Pervasive Displays, Inc.
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at:
-#
-#   http:#www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing,
-# software distributed under the License is distributed on an
-# "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either
-# express or implied.  See the License for the specific language
-# governing permissions and limitations under the License.
-
+#!/usr/bin/python
+# -*- coding: latin-1 -*-
 
 import sys
 import os
 from PIL import Image
+from PIL import ImageOps
 from PIL import ImageDraw
 from PIL import ImageFont
 from datetime import datetime
 import time
 from EPD import EPD
+import urllib2, urllib
+import json
 
 WHITE = 1
 BLACK = 0
@@ -48,7 +39,7 @@ if '' == FONT_FILE:
 
 DAY_FONT_SIZE  = 100
 MONTH_FONT_SIZE  = 20
-
+TEMP_FONT_SIZE = 20
 
 MAX_START = 0xffff
 
@@ -64,9 +55,21 @@ def main(argv):
     demo(epd)
 
 
+def get_weather(woeid):
+    baseurl = "https://query.yahooapis.com/v1/public/yql?"
+    yql_query = "select item.condition from weather.forecast where woeid=" + woeid
+    yql_url = baseurl + urllib.urlencode({'q':yql_query}) + "&format=json"
+    result = urllib2.urlopen(yql_url).read()
+    data = json.loads(result)
+    code = data['query']['results']['channel']['item']['condition']['code']
+    temp = data['query']['results']['channel']['item']['condition']['temp']
+    return code, temp
+
+
 def demo(epd):
     """simple partial update demo - draw draw a clock"""
 
+    
     # initially set all white background
     image = Image.new('1', epd.size, WHITE)
 
@@ -76,6 +79,7 @@ def demo(epd):
 
     day_font = ImageFont.truetype(FONT_FILE, DAY_FONT_SIZE)
     month_font = ImageFont.truetype(FONT_FILE, MONTH_FONT_SIZE)
+    temp_font = ImageFont.truetype(FONT_FILE, TEMP_FONT_SIZE)
 
     # clear the display buffer
     draw.rectangle((0, 0, width, height), fill=WHITE, outline=WHITE)
@@ -87,6 +91,23 @@ def demo(epd):
 #draw.text((10, 55), '{y:04d}-{m:02d}-{d:02d}'.format(y=now.year, m=now.month, d=now.day), fill=BLACK, font=date_font)
     draw.text((75, 5), '{y:s}'.format(y=now.strftime('%B')), fill=BLACK, font=month_font)
     draw.text((5, 25), '{y:s}'.format(y=now.strftime('%d')), fill=BLACK, font=day_font)
+
+    
+    code, temp = get_weather("619163")
+    temp_celsius = int(round(((int(temp) - 32) / 1.8), 0)) 
+    if int(code) < 10:
+        code = "0" + code
+    weather = Image.open("Weather_icons/simple_weather_icon_" + code + ".png")
+    #weather = ImageOps.grayscale(weather)
+    w,h = weather.size
+    new_w = epd.width / 4
+    new_h = new_w * h / w
+    weather = weather.resize((new_w, new_h))
+    #weather = weather.convert("1", dither=Image.FLOYDSTEINBERG)
+    offset = (epd.width / 2 + 30, 40)
+    image.paste(weather, offset)
+    draw.text((epd.width / 2 + 30, 100),'{t:d}°C'.format(t=temp_celsius), fill=BLACK, font=temp_font)
+    
 
     epd.display(image)
     epd.update()    # full update every minute
